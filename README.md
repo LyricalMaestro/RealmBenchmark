@@ -1,0 +1,2 @@
+# RealmBenchmark
+RealmとSQLiteのパフォーマンス比較用Androidアプリです。このプログラムはAndroid4.0以上の端末で試すことができます。
