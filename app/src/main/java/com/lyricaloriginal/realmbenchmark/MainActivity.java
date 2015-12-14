@@ -1,0 +1,262 @@
+package com.lyricaloriginal.realmbenchmark;
+
+import android.content.ContentValues;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.os.AsyncTask;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import io.realm.Realm;
+import io.realm.RealmResults;
+
+/**
+ * ベンチマーク用画面のActivityです。
+ */
+public class MainActivity extends AppCompatActivity {
+
+    //  検証に使うデータ数
+    private static final int DATA_NUM = 300;
+
+    private AsyncTask<Void, String, Void> mBenchmarkTask = null;
+
+    private Button mRealmBtn;
+    private Button mSqliteBtn;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        mRealmBtn = (Button)findViewById(R.id.start_benchmark_realm_btn);
+        mRealmBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mRealmBtn.setEnabled(false);
+                mSqliteBtn.setEnabled(false);
+                startBenchmarkRealm();
+            }
+        });
+        mSqliteBtn = (Button)findViewById(R.id.start_benchmark_sqlite_btn);
+        mSqliteBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mRealmBtn.setEnabled(false);
+                mSqliteBtn.setEnabled(false);
+                startSqliteBenchmark();
+            }
+        });
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if(mBenchmarkTask != null){
+            mBenchmarkTask.cancel(true);
+        }
+    }
+
+    /**
+     * Realmを使ったベンチマーク
+     */
+    private void startBenchmarkRealm(){
+        AsyncTask<Void, String, Void> task = new AsyncTask<Void, String, Void>() {
+            @Override
+            protected Void doInBackground(Void... params) {
+                Realm realm = null;
+                try{
+                    //  データ挿入
+                    int dataNum  = DATA_NUM;
+                    publishProgress("Start benchmark with " + dataNum + "records. (Realm)");
+                    long start = System.currentTimeMillis();
+                    realm = Realm.getInstance(getApplicationContext());
+                    insertData(realm, dataNum);
+                    publishProgress("Insert Completed " + (System.currentTimeMillis() - start) + "ms");
+
+                    //  データ読み込み
+                    start = System.currentTimeMillis();
+                    final RealmResults<Address> results = realm.where(Address.class).findAll();  //  クエリの取得
+                    for(Address address : results){                        //ここで全データ読み込んでみる
+                    }
+                    publishProgress("Query Completed " + (System.currentTimeMillis() - start) + "ms");
+
+                    //  削除
+                    start = System.currentTimeMillis();
+                    realm.executeTransaction(new Realm.Transaction() {
+                        @Override
+                        public void execute(Realm realm) {
+                            results.clear();
+                        }
+                    });
+                    publishProgress("Clear Completed " + (System.currentTimeMillis() - start) + "ms");
+                }finally{
+                    if(realm != null){
+                        realm.close();
+                    }
+                }
+                return null;
+            }
+
+            @Override
+            protected void onProgressUpdate(String... values) {
+                TextView textView =(TextView)findViewById(R.id.log_text_view);
+                textView.append(values[0] + "\r\n");
+            }
+
+            @Override
+            protected void onCancelled(Void aVoid) {
+                super.onCancelled(aVoid);
+                if(mBenchmarkTask != null) {
+                    mBenchmarkTask = null;
+                    mRealmBtn.setEnabled(true);
+                    mSqliteBtn.setEnabled(true);
+                }
+            }
+
+            @Override
+            protected void onPostExecute(Void result) {
+                if(mBenchmarkTask != null){
+                    mBenchmarkTask = null;
+                    mRealmBtn.setEnabled(true);
+                    mSqliteBtn.setEnabled(true);
+                    Toast.makeText(getApplicationContext(), "完了", Toast.LENGTH_SHORT).show();
+                }
+            }
+        };
+        task.execute();
+        mBenchmarkTask = task;
+    }
+
+    /**
+     * SQLiteを使ったベンチマーク
+     */
+    private void startSqliteBenchmark(){
+        AsyncTask<Void, String, Void> task = new AsyncTask<Void, String, Void>() {
+            @Override
+            protected Void doInBackground(Void... params) {
+                SQLiteDatabase db = null;
+                try{
+                    //  データ挿入
+                    int dataNum  = DATA_NUM;
+                    publishProgress("Start benchmark with " + dataNum + "records. (SQLite)");
+                    long start = System.currentTimeMillis();
+                    AddressDbOpenHelper helper = new AddressDbOpenHelper(getApplicationContext());
+                    db = helper.getWritableDatabase();
+                    insertData(db, dataNum);
+                    publishProgress("Insert Completed " + (System.currentTimeMillis() - start) + "ms");
+
+                    //  データ読み込み
+                    start = System.currentTimeMillis();
+                    loadData(db);
+                    publishProgress("Query Completed " + (System.currentTimeMillis() - start) + "ms");
+
+                    //  削除
+                    start = System.currentTimeMillis();
+                    clearData(db);
+                    publishProgress("Clear Completed " + (System.currentTimeMillis() - start) + "ms");
+                }finally{
+                    if(db != null){
+                        db.close();
+                    }
+                }
+                return null;
+            }
+
+            @Override
+            protected void onProgressUpdate(String... values) {
+                TextView textView =(TextView)findViewById(R.id.log_text_view);
+                textView.append(values[0] + "\r\n");
+            }
+
+            @Override
+            protected void onCancelled(Void aVoid) {
+                super.onCancelled(aVoid);
+                if(mBenchmarkTask != null) {
+                    mBenchmarkTask = null;
+                    mRealmBtn.setEnabled(true);
+                    mSqliteBtn.setEnabled(true);
+                }
+            }
+
+            @Override
+            protected void onPostExecute(Void result) {
+                if(mBenchmarkTask != null){
+                    mBenchmarkTask = null;
+                    mRealmBtn.setEnabled(true);
+                    mSqliteBtn.setEnabled(true);
+                    Toast.makeText(getApplicationContext(), "完了", Toast.LENGTH_SHORT).show();
+                }
+            }
+        };
+        task.execute();
+        mBenchmarkTask = task;
+
+    }
+
+    private void insertData(Realm realm, final int dataNum){
+        realm.executeTransaction(new Realm.Transaction() {
+            @Override
+            public void execute(Realm realm) {
+                for(int i = 0; i < dataNum; i++){
+                    Address address = realm.createObject(Address.class);
+                    address.setPostalCode("1111111");
+                    address.setPref("Tokyo");
+                    address.setCwtv("Shinagawa");
+                    address.setTownArea("Osaki");
+                }
+            }
+        });
+    }
+
+    private void insertData(SQLiteDatabase db, final int dataNum){
+        try{
+            db.beginTransaction();
+            for(int i = 0; i < dataNum; i++) {
+                ContentValues cv = new ContentValues();
+                cv.put("postalCode", "1111111");
+                cv.put("pref", "Tokyo");
+                cv.put("cwtv", "Shinagawa");
+                cv.put("townArea", "Osaki");
+                db.insert("ADDRESS", null, cv);
+            }
+            db.setTransactionSuccessful();
+        }finally{
+            db.endTransaction();
+        }
+    }
+
+    private void loadData(SQLiteDatabase db){
+        Cursor cr = null;
+        try{
+            cr = db.rawQuery("SELECT * FROM ADDRESS", null);
+            if(cr.moveToFirst()){
+                while(cr.moveToNext()){
+                    cr.getString(0);
+                    cr.getString(1);
+                    cr.getString(2);
+                    cr.getString(3);
+                }
+            }
+        }finally{
+            if(cr != null){
+                cr.close();
+            }
+        }
+    }
+
+    private void clearData(SQLiteDatabase db){
+        try{
+            db.beginTransaction();
+            db.execSQL("DELETE FROM ADDRESS");
+            db.setTransactionSuccessful();
+        }finally{
+            db.endTransaction();
+        }
+    }
+}
