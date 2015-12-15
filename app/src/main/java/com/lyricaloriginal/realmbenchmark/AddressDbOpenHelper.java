@@ -18,6 +18,7 @@ public class AddressDbOpenHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
         StringBuilder sb = new StringBuilder();
         sb.append("CREATE TABLE ADDRESS(");
+        sb.append("id INTEGER,");
         sb.append("postalCode TEXT,");
         sb.append("pref TEXT,");
         sb.append("cwtv TEXT,");

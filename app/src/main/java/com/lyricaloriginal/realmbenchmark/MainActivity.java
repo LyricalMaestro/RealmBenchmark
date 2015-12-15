@@ -13,6 +13,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.Random;
+
 import io.realm.Realm;
 import io.realm.RealmResults;
 
@@ -98,7 +100,12 @@ public class MainActivity extends AppCompatActivity {
                     final RealmResults<Address> results = realm.where(Address.class).findAll();  //  クエリの取得
                     for (Address address : results) {                        //ここで全データ読み込んでみる
                     }
-                    publishProgress("Query Completed " + (System.currentTimeMillis() - start) + "ms");
+                    publishProgress("Query AllRecord Completed " + (System.currentTimeMillis() - start) + "ms");
+
+                    //  データ読み込み2
+                    start = System.currentTimeMillis();
+                    loadFewData(realm, recordNum);
+                    publishProgress("Query FewRecord by many Completed " + (System.currentTimeMillis() - start) + "ms");
 
                     //  削除
                     start = System.currentTimeMillis();
@@ -165,7 +172,12 @@ public class MainActivity extends AppCompatActivity {
                     //  データ読み込み
                     start = System.currentTimeMillis();
                     loadData(db);
-                    publishProgress("Query Completed " + (System.currentTimeMillis() - start) + "ms");
+                    publishProgress("Query AllRecord Completed " + (System.currentTimeMillis() - start) + "ms");
+
+                    //  データ読み込み2
+                    start = System.currentTimeMillis();
+                    loadFewData(db, recordNum);
+                    publishProgress("Query FewRecord by many Completed " + (System.currentTimeMillis() - start) + "ms");
 
                     //  削除
                     start = System.currentTimeMillis();
@@ -214,6 +226,7 @@ public class MainActivity extends AppCompatActivity {
             public void execute(Realm realm) {
                 for (int i = 0; i < dataNum; i++) {
                     Address address = realm.createObject(Address.class);
+                    address.setId(i + 1);
                     address.setPostalCode("1111111");
                     address.setPref("Tokyo");
                     address.setCwtv("Shinagawa");
@@ -223,11 +236,25 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void loadFewData(Realm realm, int recordNum) {
+        Random random = new Random();
+        for (int i = 0; i < 100; i++) {
+            int startId = random.nextInt(recordNum - 10) + 1;
+            int endId = startId + 10;
+            RealmResults<Address> results = realm.where(Address.class).
+                    between("id", startId, endId).
+                    findAll();
+            for (Address address : results) {
+            }
+        }
+    }
+
     private void insertData(SQLiteDatabase db, final int dataNum) {
         try {
             db.beginTransaction();
             for (int i = 0; i < dataNum; i++) {
                 ContentValues cv = new ContentValues();
+                cv.put("id", i + 1);
                 cv.put("postalCode", "1111111");
                 cv.put("pref", "Tokyo");
                 cv.put("cwtv", "Shinagawa");
@@ -246,15 +273,42 @@ public class MainActivity extends AppCompatActivity {
             cr = db.rawQuery("SELECT * FROM ADDRESS", null);
             if (cr.moveToFirst()) {
                 while (cr.moveToNext()) {
-                    cr.getString(0);
+                    cr.getInt(0);
                     cr.getString(1);
                     cr.getString(2);
                     cr.getString(3);
+                    cr.getString(4);
                 }
             }
         } finally {
             if (cr != null) {
                 cr.close();
+            }
+        }
+    }
+
+    private void loadFewData(SQLiteDatabase db, int recordNum) {
+        Random random = new Random();
+        for (int i = 0; i < 100; i++) {
+            int startId = random.nextInt(recordNum - 10) + 1;
+            int endId = startId + 10;
+            String sql = "SELECT * FROM ADDRESS WHERE ID BETWEEN " + startId + " AND " + endId + ";";
+            Cursor cr = null;
+            try {
+                cr = db.rawQuery(sql, null);
+                if (cr.moveToFirst()) {
+                    while (cr.moveToNext()) {
+                        cr.getInt(0);
+                        cr.getString(1);
+                        cr.getString(2);
+                        cr.getString(3);
+                        cr.getString(4);
+                    }
+                }
+            } finally {
+                if (cr != null) {
+                    cr.close();
+                }
             }
         }
     }
