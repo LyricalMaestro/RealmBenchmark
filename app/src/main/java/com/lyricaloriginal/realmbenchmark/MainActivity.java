@@ -229,6 +229,7 @@ public class MainActivity extends AppCompatActivity {
             db.beginTransaction();
             for (int i = 0; i < dataNum; i++) {
                 ContentValues cv = new ContentValues();
+                cv.put("id", i + 1);
                 cv.put("postalCode", "1111111");
                 cv.put("pref", "Tokyo");
                 cv.put("cwtv", "Shinagawa");
@@ -247,10 +248,11 @@ public class MainActivity extends AppCompatActivity {
             cr = db.rawQuery("SELECT * FROM ADDRESS", null);
             if (cr.moveToFirst()) {
                 while (cr.moveToNext()) {
-                    cr.getString(0);
+                    cr.getInt(0);
                     cr.getString(1);
                     cr.getString(2);
                     cr.getString(3);
+                    cr.getString(4);
                 }
             }
         } finally {
