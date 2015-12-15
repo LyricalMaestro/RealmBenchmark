@@ -3,13 +3,13 @@ package com.lyricaloriginal.realmbenchmark;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 import android.os.AsyncTask;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,9 +23,9 @@ public class MainActivity extends AppCompatActivity {
 
     //  検証に使うデータ数
     private static final int DATA_NUM = 300;
-
+    private static final String[] RECORD_NUM_LIST = {"300", "2000", "20000", "200000", "1000000"};
     private AsyncTask<Void, String, Void> mBenchmarkTask = null;
-
+    private Spinner mSpinner;
     private Button mRealmBtn;
     private Button mSqliteBtn;
 
@@ -34,30 +34,45 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mRealmBtn = (Button)findViewById(R.id.start_benchmark_realm_btn);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                this, android.R.layout.simple_spinner_item, RECORD_NUM_LIST);
+        mSpinner = (Spinner) findViewById(R.id.record_num_spinner);
+        mSpinner.setAdapter(adapter);
+
+        mRealmBtn = (Button) findViewById(R.id.start_benchmark_realm_btn);
         mRealmBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mRealmBtn.setEnabled(false);
-                mSqliteBtn.setEnabled(false);
-                startBenchmarkRealm();
+                setOperatorUiEnable(false);
+                int recordNum = Integer.valueOf(mSpinner.getSelectedItem().toString());
+                startBenchmarkRealm(recordNum);
             }
         });
-        mSqliteBtn = (Button)findViewById(R.id.start_benchmark_sqlite_btn);
+        mSqliteBtn = (Button) findViewById(R.id.start_benchmark_sqlite_btn);
         mSqliteBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mRealmBtn.setEnabled(false);
-                mSqliteBtn.setEnabled(false);
-                startSqliteBenchmark();
+                setOperatorUiEnable(false);
+                int recordNum = Integer.valueOf(mSpinner.getSelectedItem().toString());
+                startSqliteBenchmark(recordNum);
             }
         });
+
+        if (savedInstanceState != null) {
+            mSpinner.setSelection(savedInstanceState.getInt("SELECT_POSITION"));
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("SELECT_POSITION", mSpinner.getSelectedItemPosition());
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if(mBenchmarkTask != null){
+        if (mBenchmarkTask != null) {
             mBenchmarkTask.cancel(true);
         }
     }
@@ -65,24 +80,23 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Realmを使ったベンチマーク
      */
-    private void startBenchmarkRealm(){
+    private void startBenchmarkRealm(final int recordNum) {
         AsyncTask<Void, String, Void> task = new AsyncTask<Void, String, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
                 Realm realm = null;
-                try{
+                try {
                     //  データ挿入
-                    int dataNum  = DATA_NUM;
-                    publishProgress("Start benchmark with " + dataNum + "records. (Realm)");
+                    publishProgress("Start benchmark with " + recordNum + " records. (Realm)");
                     long start = System.currentTimeMillis();
                     realm = Realm.getInstance(getApplicationContext());
-                    insertData(realm, dataNum);
+                    insertData(realm, recordNum);
                     publishProgress("Insert Completed " + (System.currentTimeMillis() - start) + "ms");
 
                     //  データ読み込み
                     start = System.currentTimeMillis();
                     final RealmResults<Address> results = realm.where(Address.class).findAll();  //  クエリの取得
-                    for(Address address : results){                        //ここで全データ読み込んでみる
+                    for (Address address : results) {                        //ここで全データ読み込んでみる
                     }
                     publishProgress("Query Completed " + (System.currentTimeMillis() - start) + "ms");
 
@@ -95,8 +109,8 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                     publishProgress("Clear Completed " + (System.currentTimeMillis() - start) + "ms");
-                }finally{
-                    if(realm != null){
+                } finally {
+                    if (realm != null) {
                         realm.close();
                     }
                 }
@@ -105,26 +119,24 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             protected void onProgressUpdate(String... values) {
-                TextView textView =(TextView)findViewById(R.id.log_text_view);
+                TextView textView = (TextView) findViewById(R.id.log_text_view);
                 textView.append(values[0] + "\r\n");
             }
 
             @Override
             protected void onCancelled(Void aVoid) {
                 super.onCancelled(aVoid);
-                if(mBenchmarkTask != null) {
+                if (mBenchmarkTask != null) {
                     mBenchmarkTask = null;
-                    mRealmBtn.setEnabled(true);
-                    mSqliteBtn.setEnabled(true);
+                    setOperatorUiEnable(true);
                 }
             }
 
             @Override
             protected void onPostExecute(Void result) {
-                if(mBenchmarkTask != null){
+                if (mBenchmarkTask != null) {
                     mBenchmarkTask = null;
-                    mRealmBtn.setEnabled(true);
-                    mSqliteBtn.setEnabled(true);
+                    setOperatorUiEnable(true);
                     Toast.makeText(getApplicationContext(), "完了", Toast.LENGTH_SHORT).show();
                 }
             }
@@ -136,19 +148,18 @@ public class MainActivity extends AppCompatActivity {
     /**
      * SQLiteを使ったベンチマーク
      */
-    private void startSqliteBenchmark(){
+    private void startSqliteBenchmark(final int recordNum) {
         AsyncTask<Void, String, Void> task = new AsyncTask<Void, String, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
                 SQLiteDatabase db = null;
-                try{
+                try {
                     //  データ挿入
-                    int dataNum  = DATA_NUM;
-                    publishProgress("Start benchmark with " + dataNum + "records. (SQLite)");
+                    publishProgress("Start benchmark with " + recordNum + " records. (SQLite)");
                     long start = System.currentTimeMillis();
                     AddressDbOpenHelper helper = new AddressDbOpenHelper(getApplicationContext());
                     db = helper.getWritableDatabase();
-                    insertData(db, dataNum);
+                    insertData(db, recordNum);
                     publishProgress("Insert Completed " + (System.currentTimeMillis() - start) + "ms");
 
                     //  データ読み込み
@@ -160,8 +171,8 @@ public class MainActivity extends AppCompatActivity {
                     start = System.currentTimeMillis();
                     clearData(db);
                     publishProgress("Clear Completed " + (System.currentTimeMillis() - start) + "ms");
-                }finally{
-                    if(db != null){
+                } finally {
+                    if (db != null) {
                         db.close();
                     }
                 }
@@ -170,26 +181,24 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             protected void onProgressUpdate(String... values) {
-                TextView textView =(TextView)findViewById(R.id.log_text_view);
+                TextView textView = (TextView) findViewById(R.id.log_text_view);
                 textView.append(values[0] + "\r\n");
             }
 
             @Override
             protected void onCancelled(Void aVoid) {
                 super.onCancelled(aVoid);
-                if(mBenchmarkTask != null) {
+                if (mBenchmarkTask != null) {
                     mBenchmarkTask = null;
-                    mRealmBtn.setEnabled(true);
-                    mSqliteBtn.setEnabled(true);
+                    setOperatorUiEnable(true);
                 }
             }
 
             @Override
             protected void onPostExecute(Void result) {
-                if(mBenchmarkTask != null){
+                if (mBenchmarkTask != null) {
                     mBenchmarkTask = null;
-                    mRealmBtn.setEnabled(true);
-                    mSqliteBtn.setEnabled(true);
+                    setOperatorUiEnable(true);
                     Toast.makeText(getApplicationContext(), "完了", Toast.LENGTH_SHORT).show();
                 }
             }
@@ -199,11 +208,11 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void insertData(Realm realm, final int dataNum){
+    private void insertData(Realm realm, final int dataNum) {
         realm.executeTransaction(new Realm.Transaction() {
             @Override
             public void execute(Realm realm) {
-                for(int i = 0; i < dataNum; i++){
+                for (int i = 0; i < dataNum; i++) {
                     Address address = realm.createObject(Address.class);
                     address.setPostalCode("1111111");
                     address.setPref("Tokyo");
@@ -214,10 +223,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void insertData(SQLiteDatabase db, final int dataNum){
-        try{
+    private void insertData(SQLiteDatabase db, final int dataNum) {
+        try {
             db.beginTransaction();
-            for(int i = 0; i < dataNum; i++) {
+            for (int i = 0; i < dataNum; i++) {
                 ContentValues cv = new ContentValues();
                 cv.put("postalCode", "1111111");
                 cv.put("pref", "Tokyo");
@@ -226,37 +235,43 @@ public class MainActivity extends AppCompatActivity {
                 db.insert("ADDRESS", null, cv);
             }
             db.setTransactionSuccessful();
-        }finally{
+        } finally {
             db.endTransaction();
         }
     }
 
-    private void loadData(SQLiteDatabase db){
+    private void loadData(SQLiteDatabase db) {
         Cursor cr = null;
-        try{
+        try {
             cr = db.rawQuery("SELECT * FROM ADDRESS", null);
-            if(cr.moveToFirst()){
-                while(cr.moveToNext()){
+            if (cr.moveToFirst()) {
+                while (cr.moveToNext()) {
                     cr.getString(0);
                     cr.getString(1);
                     cr.getString(2);
                     cr.getString(3);
                 }
             }
-        }finally{
-            if(cr != null){
+        } finally {
+            if (cr != null) {
                 cr.close();
             }
         }
     }
 
-    private void clearData(SQLiteDatabase db){
-        try{
+    private void clearData(SQLiteDatabase db) {
+        try {
             db.beginTransaction();
             db.execSQL("DELETE FROM ADDRESS");
             db.setTransactionSuccessful();
-        }finally{
+        } finally {
             db.endTransaction();
         }
+    }
+
+    private void setOperatorUiEnable(boolean enable) {
+        mSpinner.setEnabled(enable);
+        mRealmBtn.setEnabled(enable);
+        mSqliteBtn.setEnabled(enable);
     }
 }
