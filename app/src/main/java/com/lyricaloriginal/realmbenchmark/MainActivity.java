@@ -172,7 +172,12 @@ public class MainActivity extends AppCompatActivity {
                     //  データ読み込み
                     start = System.currentTimeMillis();
                     loadData(db);
-                    publishProgress("Query Completed " + (System.currentTimeMillis() - start) + "ms");
+                    publishProgress("Query AllRecord Completed " + (System.currentTimeMillis() - start) + "ms");
+
+                    //  データ読み込み2
+                    start = System.currentTimeMillis();
+                    loadFewData(db, recordNum);
+                    publishProgress("Query FewRecord by many Completed " + (System.currentTimeMillis() - start) + "ms");
 
                     //  削除
                     start = System.currentTimeMillis();
@@ -233,13 +238,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadFewData(Realm realm, int recordNum) {
         Random random = new Random();
-        for(int i = 0; i < 100; i++){
+        for (int i = 0; i < 100; i++) {
             int startId = random.nextInt(recordNum - 10) + 1;
             int endId = startId + 10;
             RealmResults<Address> results = realm.where(Address.class).
                     between("id", startId, endId).
                     findAll();
-            for(Address address : results){
+            for (Address address : results) {
             }
         }
     }
@@ -278,6 +283,32 @@ public class MainActivity extends AppCompatActivity {
         } finally {
             if (cr != null) {
                 cr.close();
+            }
+        }
+    }
+
+    private void loadFewData(SQLiteDatabase db, int recordNum) {
+        Random random = new Random();
+        for (int i = 0; i < 100; i++) {
+            int startId = random.nextInt(recordNum - 10) + 1;
+            int endId = startId + 10;
+            String sql = "SELECT * FROM ADDRESS WHERE ID BETWEEN " + startId + " AND " + endId + ";";
+            Cursor cr = null;
+            try {
+                cr = db.rawQuery(sql, null);
+                if (cr.moveToFirst()) {
+                    while (cr.moveToNext()) {
+                        cr.getInt(0);
+                        cr.getString(1);
+                        cr.getString(2);
+                        cr.getString(3);
+                        cr.getString(4);
+                    }
+                }
+            } finally {
+                if (cr != null) {
+                    cr.close();
+                }
             }
         }
     }
