@@ -214,6 +214,7 @@ public class MainActivity extends AppCompatActivity {
             public void execute(Realm realm) {
                 for (int i = 0; i < dataNum; i++) {
                     Address address = realm.createObject(Address.class);
+                    address.setId(i + 1);
                     address.setPostalCode("1111111");
                     address.setPref("Tokyo");
                     address.setCwtv("Shinagawa");
