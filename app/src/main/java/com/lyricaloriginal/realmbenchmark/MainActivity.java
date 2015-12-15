@@ -105,7 +105,7 @@ public class MainActivity extends AppCompatActivity {
                     realm.executeTransaction(new Realm.Transaction() {
                         @Override
                         public void execute(Realm realm) {
-                            results.clear();
+                            realm.clear(Address.class);
                         }
                     });
                     publishProgress("Clear Completed " + (System.currentTimeMillis() - start) + "ms");
