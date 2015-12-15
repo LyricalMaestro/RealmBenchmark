@@ -10,6 +10,29 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.lyricaloriginal.realmbenchmark.MainActivity">
 
+    <LinearLayout
+        android:layout_marginBottom="4dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="レコード件数：" />
+
+        <Spinner
+            android:id="@+id/record_num_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"></Spinner>
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:background="@android:color/darker_gray"
+        android:layout_marginBottom="4dp"/>
+
     <Button
         android:id="@+id/start_benchmark_realm_btn"
         android:layout_width="wrap_content"
