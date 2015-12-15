@@ -13,6 +13,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.Random;
+
 import io.realm.Realm;
 import io.realm.RealmResults;
 
@@ -98,7 +100,12 @@ public class MainActivity extends AppCompatActivity {
                     final RealmResults<Address> results = realm.where(Address.class).findAll();  //  クエリの取得
                     for (Address address : results) {                        //ここで全データ読み込んでみる
                     }
-                    publishProgress("Query Completed " + (System.currentTimeMillis() - start) + "ms");
+                    publishProgress("Query AllRecord Completed " + (System.currentTimeMillis() - start) + "ms");
+
+                    //  データ読み込み2
+                    start = System.currentTimeMillis();
+                    loadFewData(realm, recordNum);
+                    publishProgress("Query FewRecord by many Completed " + (System.currentTimeMillis() - start) + "ms");
 
                     //  削除
                     start = System.currentTimeMillis();
@@ -222,6 +229,19 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private void loadFewData(Realm realm, int recordNum) {
+        Random random = new Random();
+        for(int i = 0; i < 100; i++){
+            int startId = random.nextInt(recordNum - 10) + 1;
+            int endId = startId + 10;
+            RealmResults<Address> results = realm.where(Address.class).
+                    between("id", startId, endId).
+                    findAll();
+            for(Address address : results){
+            }
+        }
     }
 
     private void insertData(SQLiteDatabase db, final int dataNum) {
